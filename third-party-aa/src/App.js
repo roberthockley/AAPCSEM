@@ -563,7 +563,7 @@ function App() {
     try {
       console.log("**** ID", contactInitialContactId)
       // Connect to WebSocket
-      const socket = new WebSocket("ws://localhost:3000");
+      const socket = new WebSocket(`ws://${process.env.REACT_APP_LOAD_BALANCER}:3000`);
 
       socketRef.current = socket;
 

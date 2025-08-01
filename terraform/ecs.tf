@@ -70,7 +70,7 @@ resource "aws_ecs_task_definition" "ai_aapcs_task" {
    network_configuration {
      subnets          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
      security_groups  = [aws_security_group.aapcs.id]
-     assign_public_ip = true # Change to false for private subnets with NAT
+     assign_public_ip = false # Change to false for private subnets with NAT
    }
  
    load_balancer {

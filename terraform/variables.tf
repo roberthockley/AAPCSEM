@@ -75,6 +75,7 @@ variable "security_group" {
   type = object({
     name1 = string
     name2 = string
+    name3 = string
   })
   sensitive = false
 }

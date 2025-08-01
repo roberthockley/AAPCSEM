@@ -30,17 +30,21 @@ resource "aws_iam_policy" "ai_aapcs_execution_role_cloudwatch" {
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
         ]
         Resource = [
           "${aws_cloudwatch_log_group.aapcs_logs.arn}",
-          "${aws_cloudwatch_log_group.aapcs_logs.arn}:*"
+          "${aws_cloudwatch_log_group.aapcs_logs.arn}:*",
+          "${aws_cloudwatch_log_group.vpcflow_logs.arn}",
+          "${aws_cloudwatch_log_group.vpcflow_logs.arn}:*"
         ]
       }
     ]
   })
   tags = {
-    airid = "${var.environment.airid}" 
+    airid = "${var.environment.airid}"
   }
 }
 
@@ -72,7 +76,7 @@ resource "aws_iam_role" "ai_aapcs_task_role" {
   description = "Allows ECS Services to call AWS services on your behalf."
   name        = "RoleForECSApplications"
   tags = {
-    airid = "${var.environment.airid}" 
+    airid = "${var.environment.airid}"
   }
 }
 
@@ -101,7 +105,7 @@ resource "aws_iam_policy" "ai_aapcs_task_role_dynamodb" {
     ]
   })
   tags = {
-    airid = "${var.environment.airid}" 
+    airid = "${var.environment.airid}"
   }
 }
 
@@ -134,7 +138,7 @@ resource "aws_iam_policy" "ai_aapcs_task_role_bedrock" {
     ]
   })
   tags = {
-    airid = "${var.environment.airid}" 
+    airid = "${var.environment.airid}"
   }
 }
 
@@ -142,6 +146,37 @@ resource "aws_iam_role_policy_attachment" "ai_aapcs_task_role_bedrock" {
   depends_on = [aws_iam_policy.ai_aapcs_task_role_bedrock]
   role       = aws_iam_role.ai_aapcs_task_role.name
   policy_arn = aws_iam_policy.ai_aapcs_task_role_bedrock.arn
+}
+
+resource "aws_iam_policy" "ai_aapcs_task_role_kinesis" {
+  name        = "PolicyForKinesis"
+  path        = "/"
+  description = "Policy to allow aapcs to access Kinesis"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kinesis:ListShards",
+          "kinesis:GetShardIterator",
+          "kinesis:GetRecords"
+        ]
+        Resource = [
+          "*"
+        ]
+      }
+    ]
+  })
+  tags = {
+    airid = "${var.environment.airid}"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ai_aapcs_task_role_kinesis" {
+  depends_on = [aws_iam_policy.ai_aapcs_task_role_kinesis]
+  role       = aws_iam_role.ai_aapcs_task_role.name
+  policy_arn = aws_iam_policy.ai_aapcs_task_role_kinesis.arn
 }
 
 resource "aws_iam_policy" "ai_aapcs_task_role_connect" {
@@ -164,6 +199,32 @@ resource "aws_iam_policy" "ai_aapcs_task_role_connect" {
     ]
   })
   tags = {
-    airid = "${var.environment.airid}" 
+    airid = "${var.environment.airid}"
   }
+}
+
+resource "aws_iam_role" "ai_aapcs_flow_logs" {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+  description = "Allows VPC Flow to write to Cloudwatch Logs."
+  name        = "RoleForVPCFlow"
+  tags = {
+    airid = "${var.environment.airid}"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ai_aapcs_flow_logs" {
+  depends_on = [aws_iam_policy.ai_aapcs_execution_role_cloudwatch]
+  role       = aws_iam_role.ai_aapcs_flow_logs.name
+  policy_arn = aws_iam_policy.ai_aapcs_execution_role_cloudwatch.arn
 }

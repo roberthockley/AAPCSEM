@@ -1,8 +1,8 @@
 resource "aws_lb" "aapcs" {
   name               = "${var.project.tla}-${var.environment.name}-${var.load_balancer.load_balancer_name}"
-  internal           = true
+  internal           = false
   load_balancer_type = "application"
-  subnets            = [aws_subnet.aapcs_a.id,aws_subnet.aapcs_b.id]
+  subnets            = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_groups    = [aws_security_group.load_balancer.id]
   tags = {
     airid = "${var.environment.airid}" 

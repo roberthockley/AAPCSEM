@@ -23,7 +23,17 @@ const connections = new Map();
 
 // Starts a WebSocket server to manage client connections and registries
 function startWebSocketServer(port = 3000) {
-    const server = http.createServer();
+    const server = http.createServer((req, res) => {
+        if (req.url === '/health-check') {
+            console.log("HC")
+            res.writeHead(200);
+            res.end('OK');
+        } else {
+            res.writeHead(404);
+            res.end();
+        }
+    });
+
     const wss = new WebSocket.Server({ server });
 
     wss.on("connection", (ws) => {
@@ -31,17 +41,16 @@ function startWebSocketServer(port = 3000) {
 
         ws.on('message', function incoming(message) {
             const msg = JSON.parse(message);
-            console.log(msg)
             if (msg.contactId) {
                 contactId = msg.contactId;
                 connections.set(contactId, ws);
                 console.log(`New agent connection for contactId: ${contactId}`);
             }
             if (msg.questionForKB) {
-                queryKB(msg.contactId, msg.questionForKB)
+                queryKB(msg.contactId, msg.questionForKB);
             }
             if (msg.requestId && msg.result) {
-                resultsTracking(msg)
+                resultsTracking(msg);
             }
         });
 
@@ -54,7 +63,7 @@ function startWebSocketServer(port = 3000) {
     });
 
     server.listen(port, () => {
-        console.log(`WebSocket server listening on port ${port}`);
+        console.log(`Server running on port ${port}`);
     });
 }
 
