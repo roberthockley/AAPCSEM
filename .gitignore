@@ -1,0 +1,11 @@
+docker/node_modules/
+docker/node_modules/*
+terraform/.terraform
+terraform/.terraform/*
+terraform/dev.tfvars
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+third-party-aa/build/*
+third-party-aa/node_modules
+third-party-aa/node_modules/*

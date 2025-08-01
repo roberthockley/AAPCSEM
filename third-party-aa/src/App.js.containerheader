@@ -1,0 +1,79 @@
+import React from 'react';
+import {
+    AppLayoutToolbar,
+    BreadcrumbGroup,
+    Container,
+    Flashbar,
+    Header,
+    HelpPanel,
+    SideNavigation,
+    SplitPanel,
+} from '@cloudscape-design/components';
+import { I18nProvider } from '@cloudscape-design/components/i18n';
+import messages from '@cloudscape-design/components/i18n/messages/all.en';
+
+const LOCALE = 'en';
+
+export default function AppLayoutToolbarPreview() {
+    const [items, setItems] = React.useState([
+        {
+            type: "info",
+            dismissible: true,
+            dismissLabel: "Dismiss message",
+            onDismiss: () => setItems([]),
+            content: (
+                <>
+                    This is an info flash message. It contains{" "}
+                    .
+                </>
+            ),
+            id: "message_1"
+        }
+    ]);
+
+    return (
+        <I18nProvider locale={LOCALE} messages={[messages]}>
+            <AppLayoutToolbar
+                breadcrumbs={
+                    <BreadcrumbGroup
+                        items={[
+                            { text: 'Home', href: '#' },
+                        ]}
+                    />
+                }
+                navigation={
+                    <SideNavigation
+                        header={{
+                            href: '#',
+                            text: 'Service name',
+                        }}
+                        items={[{ type: 'link', text: `Page #1`, href: `#` }]}
+                    />
+                }
+                notifications={
+                    <Flashbar items={items} />
+                }
+                tools={<HelpPanel header={<h2>Overview</h2>}>Help content</HelpPanel>}
+                content={
+                    <>
+                        <img 
+                            src="/static/media/3PAppsBanner.25bbd8a90f27e60828e2.png" 
+                            alt="Banner" 
+                            style={{ maxWidth: '100%', height: 'auto', marginBottom: '20px' }}
+                        />
+                        <Container
+                            header={
+                                <Header variant="h2" description="Container description">
+                                    Container header
+                                </Header>
+                            }
+                        >
+                            <div className="contentPlaceholder" />
+                        </Container>
+                    </>
+                }
+                splitPanel={<SplitPanel header="Split panel header">Split panel content</SplitPanel>}
+            />
+        </I18nProvider>
+    );
+}
