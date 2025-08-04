@@ -47,9 +47,9 @@ resource "aws_vpc_security_group_ingress_rule" "aapcs" {
   security_group_id            = aws_security_group.aapcs.id
   description                  = "Load Balancer Listener"
   referenced_security_group_id = aws_security_group.load_balancer.id
-  from_port                    = 3000
+  from_port                    = var.ecs.port
   ip_protocol                  = "tcp"
-  to_port                      = 3000
+  to_port                      = var.ecs.port
   tags = {
     Name  = "Load Balancer Health Check"
     airid = "${var.environment.airid}"
@@ -83,9 +83,9 @@ resource "aws_vpc_security_group_ingress_rule" "load_balancer" {
   security_group_id = aws_security_group.load_balancer.id
   description       = "Load Balancer Listener"
   cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 3000
+  from_port         = var.ecs.port
   ip_protocol       = "tcp"
-  to_port           = 3000
+  to_port           = var.ecs.port
   tags = {
     Name  = "Load Balancer Listener"
     airid = "${var.environment.airid}"
@@ -96,9 +96,9 @@ resource "aws_vpc_security_group_egress_rule" "load_balancer" {
   security_group_id            = aws_security_group.load_balancer.id
   description                  = "Default Outbound"
   referenced_security_group_id = aws_security_group.aapcs.id
-  from_port                    = 3000
+  from_port                    = var.ecs.port
   ip_protocol                  = "tcp"
-  to_port                      = 3000
+  to_port                      = var.ecs.port
   tags = {
     Name  = "Load Balancer Health Check"
     airid = "${var.environment.airid}"

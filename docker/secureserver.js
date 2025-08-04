@@ -1,6 +1,7 @@
 // server.js
-const http = require('http');
+const https = require('https');
 const WebSocket = require("ws");
+const fs = require("fs");
 const { KinesisClient, ListShardsCommand, GetShardIteratorCommand, GetRecordsCommand } = require("@aws-sdk/client-kinesis");
 const { BedrockRuntimeClient, InvokeModelCommand, ConversationRole, ConverseCommand } = require("@aws-sdk/client-bedrock-runtime");
 const { BedrockAgentRuntimeClient, RetrieveAndGenerateCommand } = require("@aws-sdk/client-bedrock-agent-runtime");
@@ -21,11 +22,16 @@ const transcriptStore = new Map();
 // WebSocket connections store keyed by contactId, value is Set of ws connections
 const connections = new Map();
 
+const serverOptions = {
+    cert: fs.readFileSync("cert.pem"),
+    key: fs.readFileSync("key.pem"),
+    // ca: fs.readFileSync("ca.pem"), // optional
+};
+
 // Starts a WebSocket server to manage client connections and registries
-function startWebSocketServer(port = 8080) {
-    const server = http.createServer((req, res) => {
+function startWebSocketServer(port = 443) {
+    const server = https.createServer(serverOptions, (req, res) => {
         if (req.url === '/health-check') {
-            console.log("HC")
             res.writeHead(200);
             res.end('OK');
         } else {
@@ -423,9 +429,9 @@ async function updateCCP(transcriptSegment, contactId, data, qna) {
     }
     console.log("Send to WS", attribute)
 }
-// Start HTTP + WS server and Kinesis consumption
+// Start HTTPS + WS server and Kinesis consumption
 async function main() {
-    startWebSocketServer(8080);
+    startWebSocketServer(443);
     await consumeAllShards();
 }
 

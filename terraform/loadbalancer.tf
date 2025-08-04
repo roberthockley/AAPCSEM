@@ -11,7 +11,7 @@ resource "aws_lb" "aapcs" {
 
 resource "aws_lb_target_group" "aapcs_tg" {
   name     = "${var.project.tla}-${var.environment.name}-${var.load_balancer.target_group1_name}"
-  port     = 3000
+  port     = var.ecs.port
   protocol = "HTTP"
   vpc_id   = aws_vpc.aapcs.id
   target_type = "ip"
@@ -30,7 +30,7 @@ resource "aws_lb_target_group" "aapcs_tg" {
 
 resource "aws_lb_listener" "aapcs_listener" {
   load_balancer_arn = aws_lb.aapcs.arn
-  port              = 3000
+  port              = var.ecs.port
   protocol          = "HTTP"
 
   default_action {

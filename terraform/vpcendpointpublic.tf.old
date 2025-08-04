@@ -2,7 +2,7 @@ resource "aws_vpc_endpoint" "ecr" {
   vpc_id              = aws_vpc.aapcs.id
   service_name        = "com.amazonaws.ap-southeast-1.ecr.api"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+  subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -15,7 +15,7 @@ resource "aws_vpc_endpoint" "ecrdkr" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.ecr.dkr"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -28,7 +28,7 @@ resource "aws_vpc_endpoint" "lambda" {
   vpc_id              = aws_vpc.aapcs.id
   service_name        = "com.amazonaws.ap-southeast-1.lambda"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+  subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -41,7 +41,7 @@ resource "aws_vpc_endpoint" "logs" {
   vpc_id              = aws_vpc.aapcs.id
   service_name        = "com.amazonaws.ap-southeast-1.logs"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+  subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -54,7 +54,7 @@ resource "aws_vpc_endpoint" "monitoring" {
   vpc_id              = aws_vpc.aapcs.id
   service_name        = "com.amazonaws.ap-southeast-1.monitoring"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+  subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -88,7 +88,7 @@ resource "aws_vpc_endpoint" "kms" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.kms"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -100,7 +100,7 @@ resource "aws_vpc_endpoint" "ecstelemetry" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.ecs-telemetry"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -113,7 +113,7 @@ resource "aws_vpc_endpoint" "ecsagent" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.ecs-agent"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -126,7 +126,7 @@ resource "aws_vpc_endpoint" "ecs" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.ecs"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {
@@ -160,7 +160,7 @@ resource "aws_vpc_endpoint" "kinesis" {
   vpc_id            = aws_vpc.aapcs.id
   service_name      = "com.amazonaws.ap-southeast-1.kinesis-streams"
   vpc_endpoint_type = "Interface"
-subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
+subnet_ids          = [aws_subnet.aapcs_public_a.id,aws_subnet.aapcs_public_b.id]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
   tags = {

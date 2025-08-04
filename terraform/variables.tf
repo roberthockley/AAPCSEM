@@ -45,6 +45,7 @@ variable "ecs" {
     task_family_name = string
     task_name        = string
     service_name     = string
+    port             = number
   })
   sensitive = false
 }
@@ -76,6 +77,13 @@ variable "security_group" {
     name1 = string
     name2 = string
     name3 = string
+  })
+  sensitive = false
+}
+
+variable "connect" {
+  type = object({
+    instance_id = string
   })
   sensitive = false
 }

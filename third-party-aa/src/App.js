@@ -563,7 +563,8 @@ function App() {
     try {
       console.log("**** ID", contactInitialContactId)
       // Connect to WebSocket
-      const socket = new WebSocket(`ws://${process.env.REACT_APP_LOAD_BALANCER}:3000`);
+      console.log(`**** WS Server: wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`)
+      const socket = new WebSocket(`wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`);
 
       socketRef.current = socket;
 

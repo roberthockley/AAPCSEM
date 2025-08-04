@@ -6,7 +6,9 @@
     "@aws-sdk/client-kinesis": "^3.848.0",
     "@aws-sdk/client-qconnect": "^3.855.0",
     "express": "^5.1.0",
+    "fs": "^0.0.1-security",
     "http": "^0.0.1-security",
+    "https": "^1.0.0",
     "path": "^0.12.7",
     "ws": "^8.18.3"
   }

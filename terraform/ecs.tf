@@ -4,6 +4,9 @@ resource "aws_ecs_cluster" "ai_aapcs_cluster" {
     name  = "containerInsights"
     value = "disabled"
   }
+  tags = {
+   airid = "${var.environment.airid}"
+ }
 }
 
 resource "aws_ecs_task_definition" "ai_aapcs_task" {
@@ -26,9 +29,9 @@ resource "aws_ecs_task_definition" "ai_aapcs_task" {
       image = "${var.environment.account_id}.dkr.ecr.${var.environment.region}.amazonaws.com/${aws_ecr_repository.aapcs.name}:latest"
       links = []
       portMappings = [{
-        "name" : "websocket-container-3000-tcp",
-        "containerPort" : 3000,
-        "hostPort" : 3000,
+        "name" : "websocket-container-${var.ecs.port}-tcp",
+        "containerPort" : var.ecs.port,
+        "hostPort" : var.ecs.port,
         "protocol" : "tcp"
         }
       ]
@@ -59,7 +62,7 @@ resource "aws_ecs_task_definition" "ai_aapcs_task" {
     }
   ])
 }
- 
+## Private
  resource "aws_ecs_service" "ai_aapcs_ecs_service" {
    name            = "${var.project.tla}-${var.environment.name}-${var.ecs.cluster_name}"
    cluster         = aws_ecs_cluster.ai_aapcs_cluster.id
@@ -76,7 +79,7 @@ resource "aws_ecs_task_definition" "ai_aapcs_task" {
    load_balancer {
      target_group_arn = aws_lb_target_group.aapcs_tg.arn
      container_name   = "${var.project.tla}-${var.environment.name}-${var.ecs.cluster_name}"
-     container_port   = 3000
+     container_port   = var.ecs.port
    }
  tags = {
    airid = "${var.environment.airid}"
@@ -84,3 +87,23 @@ resource "aws_ecs_task_definition" "ai_aapcs_task" {
    # Dependency enforcement
    depends_on = [aws_lb_listener.aapcs_listener]
  }
+#
+# ## Public
+# resource "aws_ecs_service" "ai_aapcs_ecs_service" {
+#   name            = "${var.project.tla}-${var.environment.name}-${var.ecs.cluster_name}2"
+#   cluster         = aws_ecs_cluster.ai_aapcs_cluster.id
+#   task_definition = aws_ecs_task_definition.ai_aapcs_task.arn
+#   desired_count   = "1"
+#   launch_type     = "FARGATE"
+# 
+#   network_configuration {
+#     subnets          = [aws_subnet.aapcs_public_a.id, aws_subnet.aapcs_public_b.id]
+#     security_groups  = [aws_security_group.aapcs.id]
+#     assign_public_ip = true # Change to false for private subnets with NAT
+#   }
+# tags = {
+#   airid = "${var.environment.airid}"
+# }
+#   # Dependency enforcement
+#   depends_on = [aws_lb_listener.aapcs_listener]
+# }
