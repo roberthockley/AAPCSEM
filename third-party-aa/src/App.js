@@ -400,7 +400,7 @@ function App() {
   const excludedAttributes = [];
   const toaster = useToaster();
 
-  
+
 
 
   // INSTANTIATING AGENT/CONTACT CLIENTS
@@ -563,8 +563,8 @@ function App() {
     try {
       console.log("**** ID", contactInitialContactId)
       // Connect to WebSocket
-      console.log(`**** WS Server: wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`)
-      const socket = new WebSocket(`wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`);
+      console.log(`**** WS Server: ws://${process.env.REACT_APP_LOAD_BALANCER}:8080`)
+      const socket = new WebSocket(`ws://${process.env.REACT_APP_LOAD_BALANCER}:8080`);
 
       socketRef.current = socket;
 
@@ -617,12 +617,12 @@ function App() {
 
       };
 
-      socket.onclose = () => {
-        console.log("**** WebSocket closed");
+      socket.onclose = (event) => {
+        console.log("**** WebSocket closed:", event.code, event.reason, event.wasClean);
       };
 
       socket.onerror = (error) => {
-        console.error("**** WebSocket error:", error);
+        console.error("**** WebSocket error:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
       };
 
       return () => {
@@ -658,106 +658,106 @@ function App() {
 
   return (
     <Theme.Provider theme="twilio">
-    <div className="App">
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '20px',
-        backgroundColor: '#077398',
-        zIndex: 1000 // Ensures it stays above other content
-      }}>
-        {/* Content goes here */}
-      </div>
-      <div style={{ marginTop: '20px', paddingBottom: '100px' }}>
+      <div className="App">
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '20px',
+          backgroundColor: '#077398',
+          zIndex: 1000 // Ensures it stays above other content
+        }}>
+          {/* Content goes here */}
+        </div>
+        <div style={{ marginTop: '20px', paddingBottom: '100px' }}>
 
 
 
-        {!acw && attributes && <EATable
-          qaHistory={qaHistory}
-          setQaHistory={setQaHistory}
-          visibleCount={visibleCount}
-          setVisibleCount={setVisibleCount}
-          socketRef={socketRef}
-          attributes={attributes}
-          toaster={toaster}
-        />
-        }
-        {acw && attributes && <PCSTable attributes={attributes} />}
-      </div>
-      <br></br>
-      {!acw && attributes && (
-        <div>
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '40px',
-              left: 0,
-              width: '100%',
-              padding: '8px 16px',
-              borderTop: '1px solid #ccc',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              zIndex: 1000,
-              boxSizing: 'border-box',
-              fontFamily: '"Open Sans", "Helvetica Neue", Roboto, Arial, sans-serif'
-            }}
-          >
-            <label style={{ whiteSpace: 'nowrap', flex: 'none' }}>
-              Search Knowledge Base:
-            </label>
-            <input
-              type="text"
-              placeholder="Enter your query..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleManualSearch(e.target.value);
-                }
-              }}
+          {!acw && attributes && <EATable
+            qaHistory={qaHistory}
+            setQaHistory={setQaHistory}
+            visibleCount={visibleCount}
+            setVisibleCount={setVisibleCount}
+            socketRef={socketRef}
+            attributes={attributes}
+            toaster={toaster}
+          />
+          }
+          {acw && attributes && <PCSTable attributes={attributes} />}
+        </div>
+        <br></br>
+        {!acw && attributes && (
+          <div>
+            <div
               style={{
-                flexGrow: 1,
-                maxWidth: '70%',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
+                position: 'fixed',
+                bottom: '40px',
+                left: 0,
+                width: '100%',
+                padding: '8px 16px',
+                borderTop: '1px solid #ccc',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                zIndex: 1000,
+                boxSizing: 'border-box',
                 fontFamily: '"Open Sans", "Helvetica Neue", Roboto, Arial, sans-serif'
               }}
-            />
-
-            <Button
-              variant="primary"
-              onClick={() => handleManualSearch(searchQuery)}
             >
-              Search
-            </Button>
-          </div>
+              <label style={{ whiteSpace: 'nowrap', flex: 'none' }}>
+                Search Knowledge Base:
+              </label>
+              <input
+                type="text"
+                placeholder="Enter your query..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleManualSearch(e.target.value);
+                  }
+                }}
+                style={{
+                  flexGrow: 1,
+                  maxWidth: '70%',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontFamily: '"Open Sans", "Helvetica Neue", Roboto, Arial, sans-serif'
+                }}
+              />
 
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              width: '100%',
-              height: '40px',
-              backgroundColor: '#077398',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              fontFamily: '"Open Sans", "Helvetica Neue", Roboto, Arial, sans-serif'
-            }}
-          >
-            <span>Agent Assist - Powered by Accenture</span>
+              <Button
+                variant="primary"
+                onClick={() => handleManualSearch(searchQuery)}
+              >
+                Search
+              </Button>
+            </div>
+
+            <div
+              style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                height: '40px',
+                backgroundColor: '#077398',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                fontFamily: '"Open Sans", "Helvetica Neue", Roboto, Arial, sans-serif'
+              }}
+            >
+              <span>Agent Assist - Powered by Accenture</span>
+            </div>
           </div>
-        </div>
-      )}
-      <Toaster left={['space180', 'unset', 'unset']} {...toaster} />
-    </div>
+        )}
+        <Toaster left={['space180', 'unset', 'unset']} {...toaster} />
+      </div>
     </Theme.Provider>
 
   );

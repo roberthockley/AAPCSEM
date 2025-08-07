@@ -4,12 +4,18 @@ const WebSocket = require("ws");
 const { KinesisClient, ListShardsCommand, GetShardIteratorCommand, GetRecordsCommand } = require("@aws-sdk/client-kinesis");
 const { BedrockRuntimeClient, InvokeModelCommand, ConversationRole, ConverseCommand } = require("@aws-sdk/client-bedrock-runtime");
 const { BedrockAgentRuntimeClient, RetrieveAndGenerateCommand } = require("@aws-sdk/client-bedrock-agent-runtime");
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 const dynamodbClient = new DynamoDBClient({ region: "ap-southeast-1" });
 const bedrockClient = new BedrockRuntimeClient({ region: "ap-southeast-1" });
 const bedrockAgentClient = new BedrockAgentRuntimeClient({ region: "ap-southeast-1" });
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
 const STREAM_NAME = process.env.KINESIS_STREAM_NAME || "song-uat-aapcs-connect-contact-lens";
+const s3 = new S3Client({ region: "ap-southeast-2" });
+const MODEL_ID_TITAN = "amazon.titan-embed-text-v2:0";
+const bedrock = new BedrockRuntimeClient({ region: "ap-southeast-2" });
+
+
 
 // Initialize Kinesis client
 const kinesisClient = new KinesisClient({ region: REGION });
@@ -21,8 +27,12 @@ const transcriptStore = new Map();
 // WebSocket connections store keyed by contactId, value is Set of ws connections
 const connections = new Map();
 
+const cache = new Map();
+
+
+let clientName = ['ICA']
 // Starts a WebSocket server to manage client connections and registries
-function startWebSocketServer(port = 8080) {
+async function startWebSocketServer(port = 8080) {
     const server = http.createServer((req, res) => {
         if (req.url === '/health-check') {
             console.log("HC")
@@ -65,6 +75,29 @@ function startWebSocketServer(port = 8080) {
     server.listen(port, '0.0.0.0', () => {
         console.log("WebSocket server running on port 8080");
     });
+
+    const BUCKET = "song-ai-dhl2";
+    const EMBEDDINGS_PREFIX = "embeddings/";
+
+    for (let i = 0; i < clientName.length; i++) {
+
+        const cmd = new GetObjectCommand({
+            Bucket: BUCKET,
+            Key: `${EMBEDDINGS_PREFIX}${clientName[i]}_FAQ2.json`
+        });
+        const response = await s3.send(cmd);
+
+        const chunks = [];
+        for await (const chunk of response.Body) {
+            chunks.push(chunk);
+        }
+
+        const jsonStr = Buffer.concat(chunks).toString("utf-8");
+        const embeddings = JSON.parse(jsonStr);
+        cache.set(clientName, embeddings); // store in memory
+        console.log("Storing to cache with key:", clientName);
+
+    }
 }
 
 async function resultsTracking(message) {
@@ -80,7 +113,7 @@ async function resultsTracking(message) {
     });
 
     await dynamodbClient.send(dynamodbCommand);
-    console.log(`**** Stored feedback for ${message.contactId} - ${message.requestId}`);
+    console.log(`✅ Stored feedback for ${message.contactId} - ${message.requestId}`);
 }
 // Utility to update transcript store for a given contactId and notify clients
 function updateTranscript(contactId, transcriptSegment, role) {
@@ -100,7 +133,7 @@ function updateTranscript(contactId, transcriptSegment, role) {
     if (role.Transcript.ParticipantRole == "CUSTOMER") {
         console.log("Updating CCP")
         //updateCCP(transcriptSegment, contactId, data)
-        isQuestion(transcriptSegment, contactId, data)
+        isQuestion(transcriptSegment, contactId, data,clientName)
     }
 
 }
@@ -260,10 +293,8 @@ ${JSON.stringify(data.lastTurns, null, 2)}
     }
 }*/
 // Cloude Sonnet 3.5
+/*
 async function isQuestion(transcriptSegment, contactId, data) {
-
-                updateCCP(transcriptSegment, contactId, null, false)//,null to data if want last turns
-
     const prompt = `
   You are an AI assistant supporting a contact center. Below is a transcript of the last 10 exchanges between a customer and an agent.
 
@@ -323,7 +354,163 @@ ${JSON.stringify(data.lastTurns, null, 2)}
         console.error(`ERROR: Can't invoke '${bedrockParams.modelId}'. Reason: ${error.message}`);
         throw error;
     }
+}*/
+
+async function isQuestion(transcriptSegment, contactId, data, clientName) {
+    try {
+                        updateCCP(transcriptSegment, contactId, null, false)//,null to data if want last turns
+
+        // Load client embeddings from cache or S3
+        // const embeddings = await loadClientEmbeddings(clientName);
+        //const { loadClientEmbeddingsOnce } = require('./clientembeddings_cache');
+        //const embeddings = await loadClientEmbeddingsOnce(clientName);
+        let embeddings = JSON.stringify(cache.get(clientName))
+
+
+        // Embed the user's message
+        //const queryEmbedding = await getTitanEmbedding(transcriptSegment); // convert the question to embeddings
+
+        // Top 3 similar documents
+        //const topMatches = getTopKSimilar(queryEmbedding, embeddings, 3);
+        //const topMatch = topMatches[0];
+
+        // Build context string for prompt
+        //const contextDocs = topMatches.map(
+        //  (doc, i) => `Doc ${i + 1}: ${doc.page_content}`
+        // ).join('\n');
+
+        //updateCCP(jsonOutput, contactId, null, true);
+
+        const prompt = `
+You are an AI assistant supporting a contact center. Your job is to assist live agents by identifying whether a customer's question can be answered using the company's official knowledge base, and if so, return the best possible answer from it.
+ 
+You will be given:
+- A transcript of the last 10 turns between a customer and an agent.
+- The last customer message (which may be vague or incomplete).
+- A set of knowledge base documents containing only the valid sources you are allowed to use to generate answers.
+ 
+Follow these steps:
+ 
+1. Determine if the last customer message is a clear, informational question.
+2. If the message is vague or incomplete (e.g., "How much is it?” or “What's the status?"), reconstruct or reword the question using relevant context from earlier transcript turns, starting from the most recent and working backward.
+3. Use the provided knowledge base to determine if the reworded (or original) question can be answered based **only** on that content.
+4. Set "IsAQuestion" to "YES" **only if the message is a valid informational question that can be answered using the knowledge base.** Otherwise, set it to "No".
+5. If the question is valid and answerable, return the most relevant and complete answer from the knowledge base. Do not guess or fabricate. If no answer is available, leave the "Answer" field as an empty string.
+ 
+---
+Knowledge Base Context:
+${embeddings}
+ 
+Last Customer Message:
+${transcriptSegment}
+ 
+Transcript (last 10 turns):
+${JSON.stringify(data.lastTurns, null, 2)}
+---
+ 
+Respond in the following strict JSON format (on a single line, with no newlines or extra whitespace):
+ 
+{
+  "IsAQuestion": "YES" or "NO",
+  "RewordedQuestion": "clarified question or original",
+  "Answer": "answer to the reworded question if applicable, or an empty string"
 }
+`;
+
+        const nativeRequest = {
+            anthropic_version: "bedrock-2023-05-31",
+            max_tokens: 512,
+            temperature: 0.5,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        };
+
+        const bedrockParams = {
+            body: JSON.stringify(nativeRequest),
+            contentType: "application/json",
+            accept: "application/json",
+            modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+        };
+
+        const isQCommand = new InvokeModelCommand(bedrockParams);
+        const response = await bedrockClient.send(isQCommand);
+        const responseBody = await response.body.transformToString();
+
+        const content = JSON.parse(responseBody);
+        let jsonOutput;
+
+        try {
+            jsonOutput = JSON.parse(content.content[0].text);
+            console.log("Claude response:", jsonOutput);
+
+            // Include top match info
+            /*if (topMatch) {
+              jsonOutput.TopMatch = {
+                Question: topMatch.metadata?.Question,
+                Category: topMatch.metadata?.Category,
+                Similarity: parseFloat(topMatch.similarity.toFixed(4))
+              };
+            }*/
+
+            if (jsonOutput.IsAQuestion === "YES") {
+
+                console.log("***", jsonOutput)
+                updateCCP(jsonOutput, contactId, null, true);
+            }
+            else{
+                console.log("***", jsonOutput)
+            }
+
+            return jsonOutput;
+
+        } catch (err) {
+            console.error("Failed to parse Claude output:", err);
+            throw err;
+        }
+
+    } catch (error) {
+        console.error(`ERROR in isQuestion for ${clientName}:`, error.message);
+        throw error;
+    }
+}
+
+async function getTitanEmbedding(text) {
+    const body = JSON.stringify({ inputText: text });
+
+    const command = new InvokeModelCommand({
+        modelId: MODEL_ID_TITAN,
+        body,
+        contentType: "application/json",
+        accept: "application/json"
+    });
+
+    const response = await bedrock.send(command);
+    const responseBody = await response.body.transformToString();
+    const parsed = JSON.parse(responseBody);
+
+    return parsed.embedding;
+}
+
+function cosineSimilarity(a, b) {
+    const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    return dot / (normA * normB);
+}
+
+function getTopKSimilar(queryEmbedding, documents, k = 2) {
+    const scored = documents.map(doc => ({
+        ...doc,
+        similarity: cosineSimilarity(queryEmbedding, doc.embedding)
+    }));
+
+    return scored.sort((a, b) => b.similarity - a.similarity).slice(0, k);
+}
+
 
 async function postCallSymmary(psContactId) {
     console.log(transcriptStore.get(psContactId)?.fullTranscript)
@@ -408,13 +595,13 @@ async function updateCCPPCS(contactId, summary) {
 }
 
 async function updateCCP(transcriptSegment, contactId, data, qna) {
-    console.log("****", data)
+    console.log("data", transcriptSegment)
     let attribute = {}
     attribute.contactId = contactId
     attribute.attributes = {}
-    attribute.attributes.AAQuestion = transcriptSegment
+    attribute.attributes.AAQuestion = transcriptSegment.RewordedQuestion || transcriptSegment
     attribute.attributes.AALocation = data?.location
-    attribute.attributes.AAText = data?.lastTurns
+    attribute.attributes.AAText = transcriptSegment.Answer
     attribute.attributes.QnA = qna
     attribute.attributes.requestId = data?.requestId
     const cws = connections.get(contactId);
@@ -431,7 +618,7 @@ async function main() {
     startWebSocketServer(8080);
     await consumeAllShards();
 }
-
+/*
 async function queryKB(contactId, questionForKB) {
     const modelArn = "arn:aws:bedrock:ap-southeast-1:949449004747:inference-profile/apac.anthropic.claude-3-haiku-20240307-v1:0";//"arn:aws:bedrock:ap-southeast-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0";//anthropic.claude-3-5-sonnet-20240620-v1:0";
     const kbParams = {
@@ -462,7 +649,7 @@ async function queryKB(contactId, questionForKB) {
         /*guardrailConfiguration: {
           guardrailId: "qs3f2t6era9g",  // Replace with your actual Guardrail ID
           guardrailVersion: "2"
-        }*/
+        }
     };
     try {
         const kbCommand = new RetrieveAndGenerateCommand(kbParams);
@@ -475,7 +662,7 @@ async function queryKB(contactId, questionForKB) {
           ?.filter(result => result.score >= minScoreThreshold)
           .map(result => ({
             ...result
-          }));*/
+          }));
         let connectInputData = {};
         connectInputData.text = bedrockKBresponse.output.text
         connectInputData.location = bedrockKBresponse.citations[0]?.retrievedReferences[0]?.location?.s3Location?.uri || bedrockKBresponse?.citations[0]?.retrievedReferences[0]?.location?.webLocation?.url
@@ -498,6 +685,6 @@ async function queryKB(contactId, questionForKB) {
     }
 
 }
-
+*/
 
 main().catch(console.error);

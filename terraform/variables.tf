@@ -54,6 +54,7 @@ variable "load_balancer" {
   type = object({
     load_balancer_name = string
     target_group1_name = string
+    listener_port      = number
   })
   sensitive = false
 }
@@ -84,6 +85,14 @@ variable "security_group" {
 variable "connect" {
   type = object({
     instance_id = string
+  })
+  sensitive = false
+}
+
+variable "acm" {
+  type = object({
+    cf_cert_arn     = string
+    alb_cert_arn = string
   })
   sensitive = false
 }

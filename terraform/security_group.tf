@@ -83,9 +83,9 @@ resource "aws_vpc_security_group_ingress_rule" "load_balancer" {
   security_group_id = aws_security_group.load_balancer.id
   description       = "Load Balancer Listener"
   cidr_ipv4         = "0.0.0.0/0"
-  from_port         = var.ecs.port
+  from_port         = var.load_balancer.listener_port
   ip_protocol       = "tcp"
-  to_port           = var.ecs.port
+  to_port           = var.load_balancer.listener_port
   tags = {
     Name  = "Load Balancer Listener"
     airid = "${var.environment.airid}"

@@ -96,8 +96,7 @@ resource "aws_iam_policy" "ai_aapcs_task_role_dynamodb" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:PutItem"
-        ]
+          "dynamodb:PutItem"        ]
         Resource = [
           "${aws_dynamodb_table.aaresults.arn}"
         ]

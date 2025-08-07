@@ -168,3 +168,112 @@ subnet_ids          = [aws_subnet.aapcs_a.id, aws_subnet.aapcs_b.id]
     airid = "${var.environment.airid}"
   }
 }
+
+###############################################################################
+# 1. Data sources to get network interfaces for each Interface-type endpoint
+###############################################################################
+
+data "aws_network_interface" "ecr" {
+  for_each = toset(aws_vpc_endpoint.ecr.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "ecrdkr" {
+  for_each = toset(aws_vpc_endpoint.ecrdkr.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "lambda" {
+  for_each = toset(aws_vpc_endpoint.lambda.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "logs" {
+  for_each = toset(aws_vpc_endpoint.logs.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "monitoring" {
+  for_each = toset(aws_vpc_endpoint.monitoring.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "kms" {
+  for_each = toset(aws_vpc_endpoint.kms.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "ecstelemetry" {
+  for_each = toset(aws_vpc_endpoint.ecstelemetry.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "ecsagent" {
+  for_each = toset(aws_vpc_endpoint.ecsagent.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "ecs" {
+  for_each = toset(aws_vpc_endpoint.ecs.network_interface_ids)
+  id       = each.value
+}
+
+data "aws_network_interface" "kinesis" {
+  for_each = toset(aws_vpc_endpoint.kinesis.network_interface_ids)
+  id       = each.value
+}
+
+###############################################################################
+# 2. Locals to shape each data source
+###############################################################################
+
+locals {
+  eni_maps = {
+    ecr           = { for eni in data.aws_network_interface.ecr : eni.id => eni }
+    ecrdkr        = { for eni in data.aws_network_interface.ecrdkr : eni.id => eni }
+    lambda        = { for eni in data.aws_network_interface.lambda : eni.id => eni }
+    logs          = { for eni in data.aws_network_interface.logs : eni.id => eni }
+    monitoring    = { for eni in data.aws_network_interface.monitoring : eni.id => eni }
+    kms           = { for eni in data.aws_network_interface.kms : eni.id => eni }
+    ecstelemetry  = { for eni in data.aws_network_interface.ecstelemetry : eni.id => eni }
+    ecsagent      = { for eni in data.aws_network_interface.ecsagent : eni.id => eni }
+    ecs           = { for eni in data.aws_network_interface.ecs : eni.id => eni }
+    kinesis       = { for eni in data.aws_network_interface.kinesis : eni.id => eni }
+  }
+
+  vpc_endpoint_tags = {
+    ecr           = aws_vpc_endpoint.ecr.tags
+    ecrdkr        = aws_vpc_endpoint.ecrdkr.tags
+    lambda        = aws_vpc_endpoint.lambda.tags
+    logs          = aws_vpc_endpoint.logs.tags
+    monitoring    = aws_vpc_endpoint.monitoring.tags
+    kms           = aws_vpc_endpoint.kms.tags
+    ecstelemetry  = aws_vpc_endpoint.ecstelemetry.tags
+    ecsagent      = aws_vpc_endpoint.ecsagent.tags
+    ecs           = aws_vpc_endpoint.ecs.tags
+    kinesis       = aws_vpc_endpoint.kinesis.tags
+  }
+}
+
+###############################################################################
+# 3. Single aws_ec2_tag resource using dynamic for_each for all ENIs and tags
+###############################################################################
+
+resource "aws_ec2_tag" "vpc_endpoint_enis" {
+  for_each = merge([
+    for ep_name, enis in local.eni_maps : merge([
+      for eni_id, eni in enis : {
+        for tag_key, tag_value in local.vpc_endpoint_tags[ep_name] :
+        "${ep_name}-${eni_id}-${tag_key}" => {
+          resource_id = eni_id
+          key         = tag_key
+          value       = tag_value
+        }
+      }
+    ]...)
+  ]...)
+
+  resource_id = each.value.resource_id
+  key         = each.value.key
+  value       = each.value.value
+}
