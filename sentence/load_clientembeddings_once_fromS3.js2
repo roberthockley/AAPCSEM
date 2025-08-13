@@ -1,0 +1,62 @@
+// load_clientembeddings_once_fromS3.js
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const hnswlib = require("hnswlib-node");
+
+const s3 = new S3Client({ region: "ap-southeast-1" });
+const BUCKET = "song-ai-dhl2";
+const EMBEDDINGS_PREFIX = "embeddings/";
+
+const cache = new Map();
+
+async function load_clientembeddings_once_fromS3(clientName) {
+  if (cache.has(clientName)) {
+    return cache.get(clientName);
+  }
+
+  const cmd = new GetObjectCommand({
+    Bucket: BUCKET,
+    Key: `${EMBEDDINGS_PREFIX}${clientName}_FAQ3.json`
+  });
+
+  const response = await s3.send(cmd);
+
+  const chunks = [];
+  for await (const chunk of response.Body) {
+    chunks.push(chunk);
+  }
+
+  const jsonStr = Buffer.concat(chunks).toString("utf-8");
+  const items = JSON.parse(jsonStr); // contains: embedding, metadata, page_content
+
+  if (!items.length) throw new Error(`No embeddings found for client: ${clientName}`);
+
+  const DIM = items[0].embedding.length;
+
+  // === Build HNSW index ===
+  const index = new hnswlib.Hnswlib("cosine", DIM);
+  index.initIndex(items.length);
+
+  const idToMetadata = new Map();
+
+  items.forEach((item, i) => {
+    index.addPoint(item.embedding, i);
+    idToMetadata.set(i, {
+      page_content: item.page_content,
+      metadata: item.metadata
+    });
+  });
+
+  const result = { index, idToMetadata };
+  cache.set(clientName, result); // Cache for reuse
+
+  return result;
+}
+
+module.exports = {
+  load_clientembeddings_once_fromS3
+};
+
+
+// EXPECTED OUTPUT:
+// index: the ready-to-query HNSW index
+// idToMetadata: map from vector ID → { page_content, metadata }

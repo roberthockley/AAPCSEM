@@ -563,8 +563,8 @@ function App() {
     try {
       console.log("**** ID", contactInitialContactId)
       // Connect to WebSocket
-      console.log(`**** WS Server: wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`)
-      const socket = new WebSocket(`wss://${process.env.REACT_APP_LOAD_BALANCER}:${process.env.REACT_APP_PORT}`);
+      console.log(`**** WS Server: ws://${process.env.REACT_APP_LOAD_BALANCER}:8080`)
+      const socket = new WebSocket(`ws://${process.env.REACT_APP_LOAD_BALANCER}:8080`);
 
       socketRef.current = socket;
 
@@ -613,6 +613,8 @@ function App() {
             return [newItem, ...prev];
           }
         });
+
+
       };
 
       socket.onclose = (event) => {

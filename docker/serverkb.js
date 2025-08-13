@@ -1,19 +1,36 @@
-// server.js
-const http = require('http');
-const WebSocket = require("ws");
-const { KinesisClient, ListShardsCommand, GetShardIteratorCommand, GetRecordsCommand } = require("@aws-sdk/client-kinesis");
-const { BedrockRuntimeClient, InvokeModelCommand, ConversationRole, ConverseCommand } = require("@aws-sdk/client-bedrock-runtime");
-const { BedrockAgentRuntimeClient, RetrieveAndGenerateCommand } = require("@aws-sdk/client-bedrock-agent-runtime");
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
-const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
-const dynamodbClient = new DynamoDBClient({ region: "ap-southeast-1" });
-const bedrockClient = new BedrockRuntimeClient({ region: "ap-southeast-1" });
-const bedrockAgentClient = new BedrockAgentRuntimeClient({ region: "ap-southeast-1" });
-const REGION = process.env.AWS_REGION || "ap-southeast-1";
-const STREAM_NAME = process.env.KINESIS_STREAM_NAME || "song-uat-aapcs-connect-contact-lens";
-const s3 = new S3Client({ region: "ap-southeast-2" });
-const MODEL_ID_TITAN = "amazon.titan-embed-text-v2:0";
-const bedrock = new BedrockRuntimeClient({ region: "ap-southeast-2" });
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
+import {
+    KinesisClient,
+    ListShardsCommand,
+    GetShardIteratorCommand,
+    GetRecordsCommand
+} from '@aws-sdk/client-kinesis';
+import {
+    BedrockRuntimeClient,
+    InvokeModelCommand,
+    ConversationRole,
+    ConverseCommand
+} from '@aws-sdk/client-bedrock-runtime';
+import {
+    BedrockAgentRuntimeClient,
+    RetrieveAndGenerateCommand
+} from '@aws-sdk/client-bedrock-agent-runtime';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
+
+import { load_clientembeddings_once_fromS3 } from './load_clientembeddings_once_fromS3.js';
+import { summarizeWithLightmodel, loadSession } from './localmodel.js'; // make sure this is ES module too
+
+const dynamodbClient = new DynamoDBClient({ region: 'ap-southeast-1' });
+const bedrockClient = new BedrockRuntimeClient({ region: 'ap-southeast-1' });
+const bedrockAgentClient = new BedrockAgentRuntimeClient({ region: 'ap-southeast-1' });
+const REGION = process.env.AWS_REGION || 'ap-southeast-1';
+const STREAM_NAME = process.env.KINESIS_STREAM_NAME || 'song-uat-aapcs-connect-contact-lens';
+const s3 = new S3Client({ region: 'ap-southeast-2' });
+const MODEL_ID_TITAN = 'amazon.titan-embed-text-v2:0';
+const bedrock = new BedrockRuntimeClient({ region: 'ap-southeast-2' });
+
 
 
 
@@ -26,25 +43,25 @@ const transcriptStore = new Map();
 
 // WebSocket connections store keyed by contactId, value is Set of ws connections
 const connections = new Map();
-
 const cache = new Map();
 
-
-let clientName = ['ICA']
+let clientName = ['ICA', 'NCSS']
 // Starts a WebSocket server to manage client connections and registries
 async function startWebSocketServer(port = 8080) {
     const server = http.createServer((req, res) => {
         if (req.url === '/health-check') {
-            console.log("HC")
+            console.log("HC");
             res.writeHead(200);
             res.end('OK');
         } else {
-            res.writeHead(404);
-            res.end();
+            // Let it fall through so ws can handle upgrade requests
+            // or respond with 200 OK for normal HTTP GET requests
+            res.writeHead(200);
+            res.end('OK');
         }
     });
 
-    const wss = new WebSocket.Server({ server });
+    const wss = new WebSocketServer({ server });
 
     wss.on("connection", (ws) => {
         let contactId;
@@ -57,7 +74,27 @@ async function startWebSocketServer(port = 8080) {
                 console.log(`New agent connection for contactId: ${contactId}`);
             }
             if (msg.questionForKB) {
-                queryKB(msg.contactId, msg.questionForKB);
+                iQ(
+                    `"${msg.questionForKB}"`, contactId,
+                    `Agent: "Welcome to the Housing Development Board (HDB) helpline. How may I assist you today?"
+
+Customer: "I want to know about upgrading my flat."
+
+Agent: "We offer the Home Improvement Programme (HIP) for upgrading flats."
+
+Customer: "What does the HIP cover?"
+
+Agent: "It covers essential repairs and improvements like replacing doors, upgrading bathrooms, and installing safety features."
+
+Customer: "How long does the programme last?"
+
+Agent: "The programme runs for five years with scheduled work phases."
+
+Customer: "Can I apply if I live in a 3-room flat?"
+
+Agent: "Yes, 3-room flats are eligible for the HIP". Customer: ,${msg.questionForKB}` 
+                );
+
             }
             if (msg.requestId && msg.result) {
                 resultsTracking(msg);
@@ -76,28 +113,6 @@ async function startWebSocketServer(port = 8080) {
         console.log("WebSocket server running on port 8080");
     });
 
-    const BUCKET = "song-ai-dhl2";
-    const EMBEDDINGS_PREFIX = "embeddings/";
-
-    for (let i = 0; i < clientName.length; i++) {
-
-        const cmd = new GetObjectCommand({
-            Bucket: BUCKET,
-            Key: `${EMBEDDINGS_PREFIX}${clientName[i]}_FAQ2.json`
-        });
-        const response = await s3.send(cmd);
-
-        const chunks = [];
-        for await (const chunk of response.Body) {
-            chunks.push(chunk);
-        }
-
-        const jsonStr = Buffer.concat(chunks).toString("utf-8");
-        const embeddings = JSON.parse(jsonStr);
-        cache.set(clientName, embeddings); // store in memory
-        console.log("Storing to cache with key:", clientName);
-
-    }
 }
 
 async function resultsTracking(message) {
@@ -133,7 +148,8 @@ function updateTranscript(contactId, transcriptSegment, role) {
     if (role.Transcript.ParticipantRole == "CUSTOMER") {
         console.log("Updating CCP")
         //updateCCP(transcriptSegment, contactId, data)
-        isQuestion(transcriptSegment, contactId, data,clientName)
+        //isQuestion(transcriptSegment, contactId, data, clientName)
+        iQ(transcriptSegment, contactId, data, clientName)
     }
 
 }
@@ -358,7 +374,7 @@ ${JSON.stringify(data.lastTurns, null, 2)}
 
 async function isQuestion(transcriptSegment, contactId, data, clientName) {
     try {
-                        updateCCP(transcriptSegment, contactId, null, false)//,null to data if want last turns
+        updateCCP(transcriptSegment, contactId, null, false)//,null to data if want last turns
 
         // Load client embeddings from cache or S3
         // const embeddings = await loadClientEmbeddings(clientName);
@@ -461,7 +477,7 @@ Respond in the following strict JSON format (on a single line, with no newlines 
                 console.log("***", jsonOutput)
                 updateCCP(jsonOutput, contactId, null, true);
             }
-            else{
+            else {
                 console.log("***", jsonOutput)
             }
 
@@ -510,7 +526,6 @@ function getTopKSimilar(queryEmbedding, documents, k = 2) {
 
     return scored.sort((a, b) => b.similarity - a.similarity).slice(0, k);
 }
-
 
 async function postCallSymmary(psContactId) {
     console.log(transcriptStore.get(psContactId)?.fullTranscript)
@@ -599,7 +614,7 @@ async function updateCCP(transcriptSegment, contactId, data, qna) {
     let attribute = {}
     attribute.contactId = contactId
     attribute.attributes = {}
-    attribute.attributes.AAQuestion = transcriptSegment.RewordedQuestion || transcriptSegment
+    attribute.attributes.AAQuestion = transcriptSegment.RewordedQuestion
     attribute.attributes.AALocation = data?.location
     attribute.attributes.AAText = transcriptSegment.Answer
     attribute.attributes.QnA = qna
@@ -615,10 +630,20 @@ async function updateCCP(transcriptSegment, contactId, data, qna) {
 }
 // Start HTTP + WS server and Kinesis consumption
 async function main() {
+    loadSession()
+    const clientName = ["NCSS", "ICA"]
+    for (let i = 0; i < clientName.length; i++) {
+        let test = await load_clientembeddings_once_fromS3(clientName[i])
+        cache.set(clientName[i], test);
+    }
+
+    //console.log(cache.get("NCSS"))
+
     startWebSocketServer(8080);
     await consumeAllShards();
 }
 /*
+
 async function queryKB(contactId, questionForKB) {
     const modelArn = "arn:aws:bedrock:ap-southeast-1:949449004747:inference-profile/apac.anthropic.claude-3-haiku-20240307-v1:0";//"arn:aws:bedrock:ap-southeast-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0";//anthropic.claude-3-5-sonnet-20240620-v1:0";
     const kbParams = {
@@ -686,5 +711,17 @@ async function queryKB(contactId, questionForKB) {
 
 }
 */
+
+async function iQ(transcriptSegment, contactId, data, clientName) {
+    //console.time("iQ");
+    let test = await summarizeWithLightmodel(transcriptSegment, data)
+    console.log(test)
+    let ttt = {}
+        console.log(test.RewordedQuestion, contactId, ttt, test.IsAQuestion)
+
+    updateCCP(JSON.parse(test), contactId, ttt, false, clientName)
+    //console.timeEnd("iQ");
+}
+
 
 main().catch(console.error);

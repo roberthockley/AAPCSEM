@@ -9,3 +9,7 @@ terraform/terraform.tfstate.backup
 third-party-aa/build/*
 third-party-aa/node_modules
 third-party-aa/node_modules/*
+*/node_modules
+*/node_modules/*
+*.gguf
+*/*.gguf
