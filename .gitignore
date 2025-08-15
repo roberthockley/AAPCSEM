@@ -6,10 +6,13 @@ terraform/dev.tfvars
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
-third-party-aa/build/*
-third-party-aa/node_modules
-third-party-aa/node_modules/*
+third-party-aa-secure/build/*
+third-party-aa-secure/node_modules
+third-party-aa-secure/node_modules/*
 */node_modules
 */node_modules/*
 *.gguf
 */*.gguf
+third-party-aa-insecure/build/*
+third-party-aa-insecure/node_modules
+third-party-aa-insecure/node_modules/*

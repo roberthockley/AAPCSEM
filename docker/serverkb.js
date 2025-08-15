@@ -31,9 +31,6 @@ const s3 = new S3Client({ region: 'ap-southeast-2' });
 const MODEL_ID_TITAN = 'amazon.titan-embed-text-v2:0';
 const bedrock = new BedrockRuntimeClient({ region: 'ap-southeast-2' });
 
-
-
-
 // Initialize Kinesis client
 const kinesisClient = new KinesisClient({ region: REGION });
 
@@ -92,7 +89,7 @@ Agent: "The programme runs for five years with scheduled work phases."
 
 Customer: "Can I apply if I live in a 3-room flat?"
 
-Agent: "Yes, 3-room flats are eligible for the HIP". Customer: ,${msg.questionForKB}` 
+Agent: "Yes, 3-room flats are eligible for the HIP". Customer: ${msg.questionForKB}` 
                 );
 
             }
@@ -146,12 +143,12 @@ function updateTranscript(contactId, transcriptSegment, role) {
         data.lastTurns.shift();
     }
     if (role.Transcript.ParticipantRole == "CUSTOMER") {
+        console.log(role.Transcript)
         console.log("Updating CCP")
         //updateCCP(transcriptSegment, contactId, data)
         //isQuestion(transcriptSegment, contactId, data, clientName)
-        iQ(transcriptSegment, contactId, data, clientName)
+        iQ(role.Transcript.Content, contactId, data, clientName)
     }
-
 }
 
 // When a call ends you can drop stored data for the contactId to free memory
@@ -528,7 +525,7 @@ function getTopKSimilar(queryEmbedding, documents, k = 2) {
 }
 
 async function postCallSymmary(psContactId) {
-    console.log(transcriptStore.get(psContactId)?.fullTranscript)
+    console.log("Full Transcript:",transcriptStore.get(psContactId)?.fullTranscript)
     const prompt = `This call is from a Contact Center. 
     Please summarize this call and provide next actions. 
     Please use bullet points not hyphens, bullet points can not be numerical. 

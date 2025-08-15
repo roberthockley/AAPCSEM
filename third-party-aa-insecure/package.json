@@ -2,6 +2,7 @@
   "name": "db-admin",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/aapcs-insecure",
   "dependencies": {
     "@amazon-connect/app": "^1.0.7",
     "@amazon-connect/contact": "^1.0.7",
